@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منظم المهام اليومية الذكي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #0f766e; --secondary: #d97706; --bg: #f8fafc;
+            --card: #ffffff; --text: #334155; --border: #e2e8f0;
+            --worship: #ecfdf5; --worship-border: #10b981;
+            --work: #eff6ff; --work-border: #3b82f6;
+            --study: #fffbeb; --study-border: #f59e0b;
+            --health: #fef2f2; --health-border: #ef4444;
+            --routine: #f3f4f6; --routine-border: #6b7280;
+        }
+        body { font-family: 'Tajawal', sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 0; }
+        .header { background-color: var(--primary); color: white; text-align: center; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .header h1 { margin: 0; font-size: 24px; }
+        .header p { margin: 5px 0 0 0; font-size: 14px; opacity: 0.9; }
+        .container { max-width: 800px; margin: 20px auto; padding: 0 15px; }
+        .days-nav { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; margin-bottom: 20px; }
+        .day-btn { background: var(--card); border: 1px solid var(--border); padding: 10px 20px; border-radius: 20px; cursor: pointer; white-space: nowrap; font-weight: bold; color: var(--text); transition: 0.2s; }
+        .day-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .timeline { display: flex; flex-direction: column; gap: 15px; }
+        .task-card { background: var(--card); border-radius: 12px; padding: 15px; display: flex; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-right: 5px solid; position: relative; }
+        .task-card[data-type="worship"] { border-color: var(--worship-border); background-color: var(--worship); }
+        .task-card[data-type="work"] { border-color: var(--work-border); background-color: var(--work); }
+        .task-card[data-type="study"] { border-color: var(--study-border); background-color: var(--study); }
+        .task-card[data-type="health"] { border-color: var(--health-border); background-color: var(--health); }
+        .task-card[data-type="routine"] { border-color: var(--routine-border); background-color: var(--routine); }
+        .time-col { min-width: 90px; font-weight: 900; color: var(--primary); font-size: 14px; display: flex; flex-direction: column; justify-content: center; }
+        .info-col { flex-grow: 1; padding-right: 15px; border-right: 1px solid var(--border); margin-right: 15px; }
+        .info-col h3 { margin: 0 0 5px 0; font-size: 16px; }
+        .info-col p { margin: 0; font-size: 13px; color: #475569; line-height: 1.5; }
+        .smart-note { display: inline-block; margin-top: 8px; background: #e0e7ff; color: #3730a3; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; }
+        .actions { position: absolute; left: 15px; top: 15px; display: flex; gap: 5px; }
+        .btn-icon { background: none; border: none; cursor: pointer; font-size: 16px; opacity: 0.5; }
+        .btn-icon:hover { opacity: 1; }
+        .add-btn { display: block; width: 100%; padding: 15px; background: var(--card); border: 2px dashed var(--border); border-radius: 12px; text-align: center; font-weight: bold; color: var(--primary); cursor: pointer; margin-top: 20px; }
+        .add-btn:hover { background: #f1f5f9; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; }
+        .modal-content h2 { margin-top: 0; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;}
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; box-sizing: border-box; font-family: 'Tajawal', sans-serif; }
+        .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
+        .save-btn { background: var(--primary); color: white; border: none; padding: 10px; border-radius: 6px; flex: 1; cursor: pointer; font-weight: bold;}
+        .cancel-btn { background: #e2e8f0; color: #334155; border: none; padding: 10px; border-radius: 6px; flex: 1; cursor: pointer; font-weight: bold;}
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>مُنظم المهام اليومية الذكي 🧭</h1>
+    <p>تحديث: تم دمج سورة البقرة مع المشي الصباحي + توزيع الورد والمراجعة على الصلوات</p>
+</div>
+
+<div class="container">
+    <div class="days-nav" id="daysNav"></div>
+    <div class="timeline" id="timeline"></div>
+    <button class="add-btn" onclick="openModal()">+ إضافة مهمة جديدة لهذا اليوم</button>
+</div>
+
+<!-- نافذة التعديل/الإضافة -->
+<div class="modal" id="taskModal">
+    <div class="modal-content">
+        <h2 id="modalTitle">تعديل المهمة</h2>
+        <input type="hidden" id="taskId">
+        <div class="form-group"><label>وقت البداية:</label><input type="time" id="taskStart"></div>
+        <div class="form-group"><label>وقت النهاية:</label><input type="time" id="taskEnd"></div>
+        <div class="form-group"><label>اسم المهمة:</label><input type="text" id="taskTitle"></div>
+        <div class="form-group"><label>ملاحظات / دمج مهام:</label><input type="text" id="taskNote"></div>
+        <div class="form-group">
+            <label>نوع المهمة:</label>
+            <select id="taskType">
+                <option value="worship">🕌 عبادة / قرآن</option>
+                <option value="work">💼 عمل / دوام</option>
+                <option value="study">📚 دراسة / مطالعة</option>
+                <option value="health">🏃‍♀️ رياضة / صحة</option>
+                <option value="routine">🏠 روتين / عمل منزلي / أكل</option>
+            </select>
+        </div>
+        <div class="modal-btns">
+            <button class="save-btn" onclick="saveTask()">حفظ</button>
+            <button class="cancel-btn" onclick="closeModal()">إلغاء</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const defaultData = {
+        "الأحد": [
+            { id: 1, start: "03:00", end: "03:30", title: "تهجد ودعاء", note: "الاستيقاظ قبل الفجر بنصف ساعة", type: "worship" },
+            { id: 2, start: "03:30", end: "04:00", title: "صلاة الفجر + أذكار", note: "💡 مدمج: 4 صفحات تلاوة جزء + صفحتين مراجعة", type: "worship" },
+            { id: 3, start: "04:00", end: "05:00", title: "حفظ رياض الصالحين", note: "صفحتين", type: "worship" },
+            { id: 4, start: "05:00", end: "06:00", title: "حفظ القصيدة الجزرية مع الشرح", note: "باب واحد (الشروق 05:20)", type: "worship" },
+            { id: 5, start: "06:00", end: "07:00", title: "المشي الصباحي", note: "💡 مدمج: قراءة سورة البقرة غيباً أو استماع", type: "health" },
+            { id: 6, start: "07:00", end: "08:00", title: "فطور وعمل منزلي", note: "شرب اللتر الأول من الماء", type: "routine" },
+            { id: 7, start: "08:00", end: "14:00", title: "عمل عن بعد (من المنزل)", note: "💡 مدمج: 50 قفزة حبل كل ساعة<br>💡 استراحة الظهر (12:34): صلاة + 4 صفحات تلاوة + صفحتين مراجعة", type: "work" },
+            { id: 8, start: "14:00", end: "14:45", title: "غداء وعمل منزلي", note: "شرب اللتر الثاني من الماء", type: "routine" },
+            { id: 9, start: "14:45", end: "16:30", title: "درس سيرة نبوية", note: "مكان قريب من المنزل", type: "study" },
+            { id: 10, start: "16:30", end: "16:50", title: "صلاة العصر", note: "💡 مدمج: 4 صفحات تلاوة جزء + صفحتين مراجعة", type: "worship" },
+            { id: 11, start: "16:50", end: "17:50", title: "دراسة جامعية", note: "مادة واحدة للتعويض عن درس السيرة", type: "study" },
+            { id: 12, start: "17:50", end: "18:50", title: "تمارين رياضية", note: "ساعة كاملة", type: "health" },
+            { id: 13, start: "18:50", end: "19:49", title: "مطالعة 20 صفحة + عمل منزلي", note: "استغلال الوقت قبل المغرب", type: "study" },
+            { id: 14, start: "19:49", end: "20:15", title: "صلاة المغرب", note: "💡 مدمج: 4 صفحات تلاوة جزء + صفحتين مراجعة + أذكار المساء", type: "worship" },
+            { id: 15, start: "20:15", end: "20:45", title: "تسميع لطالبتين", note: "أونلاين", type: "work" },
+            { id: 16, start: "20:45", end: "21:19", title: "راحة وتجهيز لليوم التالي", note: "شرب اللتر الثالث", type: "routine" },
+            { id: 17, start: "21:19", end: "21:40", title: "صلاة العشاء", note: "💡 مدمج: 4 صفحات تلاوة جزء + صفحتين مراجعة + أذكار النوم", type: "worship" },
+            { id: 18, start: "21:40", end: "03:00", title: "النوم", note: "للحصول على 5.5 - 6 ساعات نوم", type: "routine" }
+        ],
+        "الإثنين": [
+            { id: 1, start: "03:00", end: "03:30", title: "تهجد ودعاء", note: "", type: "worship" },
+            { id: 2, start: "03:30", end: "04:00", title: "صلاة الفجر + أذكار", note: "💡 مدمج: 4 صفحات تلاوة + صفحتين مراجعة", type: "worship" },
+            { id: 3, start: "04:00", end: "05:00", title: "رياض الصالحين", note: "", type: "worship" },
+            { id: 4, start: "05:00", end: "06:00", title: "الجزرية مع الشرح", note: "", type: "worship" },
+            { id: 5, start: "06:00", end: "07:00", title: "المشي الصباحي", note: "💡 مدمج: سورة البقرة", type: "health" },
+            { id: 6, start: "07:00", end: "08:00", title: "فطور وعمل منزلي", note: "اللتر الأول", type: "routine" },
+            { id: 7, start: "08:00", end: "14:00", title: "عمل عن بعد", note: "💡 مدمج: 50 قفزة حبل كل ساعة<br>💡 استراحة الظهر: صلاة + 4 صفحات تلاوة + صفحتين مراجعة", type: "work" },
+            { id: 8, start: "14:00", end: "15:00", title: "غداء وعمل منزلي", note: "اللتر الثاني", type: "routine" },
+            { id: 9, start: "15:00", end: "16:21", title: "دراسة جامعية", note: "المادة الأولى", type: "study" },
+            { id: 10, start: "16:21", end: "16:45", title: "صلاة العصر", note: "💡 مدمج: 4 صفحات تلاوة + صفحتين مراجعة", type: "worship" },
+            { id: 11, start: "16:45", end: "18:45", title: "دراسة جامعية", note: "المادة الثانية والثالثة", type: "study" },
+            { id: 12, start: "18:45", end: "19:49", title: "تمارين رياضية", note: "ساعة كاملة", type: "health" },
+            { id: 13, start: "19:49", end: "20:15", title: "صلاة المغرب + أذكار المساء", note: "💡 مدمج: 4 صفحات تلاوة + صفحتين مراجعة", type: "worship" },
+            { id: 14, start: "20:15", end: "20:45", title: "تسميع طالبات", note: "طالبتين", type: "work" },
+            { id: 15, start: "20:45", end: "21:19", title: "مطالعة حرة", note: "20 صفحة + اللتر الثالث", type: "study" },
+            { id: 16, start: "21:19", end: "21:40", title: "صلاة العشاء + أذكار", note: "💡 مدمج: 4 صفحات تلاوة + صفحتين مراجعة", type: "worship" },
+            { id: 17, start: "21:40", end: "03:00", title: "النوم", note: "", type: "routine" }
+        ],
+        "الثلاثاء": [
+            // دوام مسجد
+            { id: 1, start: "03:00", end: "07:00", title: "نفس روتين الفجر", note: "تهجد، فجر (تلاوة ومراجعة)، صالحين، جزرية، والمشي (بقرة)", type: "worship" },
+            { id: 2, start: "07:00", end: "08:00", title: "فطور وعمل منزلي", note: "اللتر الأول", type: "routine" },
+            { id: 3, start: "08:00", end: "14:00", title: "عمل عن بعد", note: "💡 50 قفزة حبل<br>💡 الظهر: صلاة + 4 صفحات تلاوة + صفحتين مراجعة", type: "work" },
+            { id: 4, start: "14:00", end: "15:00", title: "غداء وعمل منزلي", note: "اللتر الثاني", type: "routine" },
+            { id: 5, start: "15:00", end: "16:00", title: "دراسة جامعية", note: "مادة واحدة فقط", type: "study" },
+            { id: 6, start: "16:00", end: "19:30", title: "دوام المسجد الثاني", note: "💡 العصر والمغرب ضمن الدوام + قراءة حصة العصر والمغرب من (تلاوة ومراجعة)", type: "work" },
+            { id: 7, start: "19:30", end: "20:30", title: "تمارين رياضية", note: "في المنزل", type: "health" },
+            { id: 8, start: "20:30", end: "21:19", title: "تسميع طالبات + مطالعة", note: "توزيع الوقت", type: "work" },
+            { id: 9, start: "21:19", end: "21:40", title: "صلاة العشاء + أذكار", note: "💡 مدمج: 4 صفحات تلاوة + صفحتين مراجعة", type: "worship" },
+            { id: 10, start: "21:40", end: "03:00", title: "النوم", note: "", type: "routine" }
+        ],
+        "الأربعاء": [
+            // مسجد بعيد
+            { id: 1, start: "03:00", end: "07:00", title: "نفس روتين الفجر", note: "المشي متضمن سورة البقرة", type: "worship" },
+            { id: 2, start: "07:00", end: "08:00", title: "فطور وعمل منزلي", note: "", type: "routine" },
+            { id: 3, start: "08:00", end: "14:00", title: "عمل عن بعد", note: "💡 50 قفزة حبل<br>💡 الظهر: صلاة + 4 صفحات تلاوة + صفحتين مراجعة", type: "work" },
+            { id: 4, start: "14:00", end: "15:00", title: "غداء وعمل منزلي", note: "", type: "routine" },
+            { id: 5, start: "15:00", end: "15:45", title: "دراسة جامعية", note: "مادة واحدة", type: "study" },
+            { id: 6, start: "15:45", end: "19:45", title: "دوام المسجد الأول (30كم)", note: "💡 الذهاب والإياب ربع ساعة<br>💡 العصر والمغرب ضمن الدوام مع حصتهما من القرآن", type: "work" },
+            { id: 7, start: "19:45", end: "20:45", title: "تمارين رياضية", note: "", type: "health" },
+            { id: 8, start: "20:45", end: "21:19", title: "تسميع لطالبتين", note: "", type: "work" },
+            { id: 9, start: "21:19", end: "21:40", title: "صلاة العشاء", note: "💡 حصة العشاء من القرآن + أذكار", type: "worship" },
+            { id: 10, start: "21:40", end: "03:00", title: "النوم", note: "", type: "routine" }
+        ],
+        "الخميس": [
+            { id: 1, start: "03:00", end: "07:00", title: "نفس روتين الصباح والمشي بالبقرة", note: "", type: "worship" },
+            { id: 2, start: "07:00", end: "14:00", title: "فطور + عمل عن بعد", note: "الظهر متضمن حصة القرآن", type: "work" },
+            { id: 3, start: "14:00", end: "15:00", title: "غداء وعمل منزلي", note: "", type: "routine" },
+            { id: 4, start: "15:00", end: "16:00", title: "دراسة جامعية", note: "", type: "study" },
+            { id: 5, start: "16:00", end: "19:30", title: "دوام المسجد الثاني", note: "يتضمن العصر والمغرب وحصتهما القرآنية", type: "work" },
+            { id: 6, start: "19:30", end: "20:30", title: "تمارين رياضية", note: "", type: "health" },
+            { id: 7, start: "20:30", end: "21:19", title: "تسميع طالبات ومطالعة", note: "", type: "study" },
+            { id: 8, start: "21:19", end: "21:40", title: "عشاء ونوم مع حصة العشاء من القرآن", note: "", type: "routine" }
+        ],
+        "الجمعة": [
+            { id: 1, start: "03:00", end: "07:00", title: "نفس روتين الصباح والمشي بالبقرة", note: "", type: "worship" },
+            { id: 2, start: "07:00", end: "11:00", title: "دراسة جامعية مكثفة", note: "لتعويض نقص دراسة أيام المسجد", type: "study" },
+            { id: 3, start: "11:00", end: "13:00", title: "سورة الكهف وصلاة الجمعة", note: "يتضمن حصة تلاوة ومراجعة", type: "worship" },
+            { id: 4, start: "13:00", end: "15:00", title: "غداء ووقت عائلي", note: "", type: "routine" },
+            { id: 5, start: "15:00", end: "16:21", title: "مطالعة 20 صفحة وتسميع طالبات", note: "", type: "study" },
+            { id: 6, start: "16:21", end: "17:30", title: "صلاة العصر (مع حصة القرآن) + تمارين رياضية", note: "", type: "health" },
+            { id: 7, start: "17:30", end: "19:49", title: "راحة وعمل منزلي", note: "حتى أذان المغرب", type: "routine" }
+        ],
+        "السبت (استثناء غداً)": [
+            { id: 1, start: "03:00", end: "04:00", title: "تهجد وفجر", note: "مع 4 تلاوة و 2 مراجعة", type: "worship" },
+            { id: 2, start: "04:00", end: "06:00", title: "صالحين وجزرية", note: "مخفف", type: "worship" },
+            { id: 3, start: "06:00", end: "07:00", title: "المشي الصباحي", note: "💡 مدمج: سورة البقرة", type: "health" },
+            { id: 4, start: "07:00", end: "08:30", title: "فطور واستعداد للدوام الطويل", note: "", type: "routine" },
+            { id: 5, start: "08:30", end: "09:00", title: "طريق الذهاب للمسجد", note: "💡 مدمج: أذكار الصباح", type: "work" },
+            { id: 6, start: "09:00", end: "19:30", title: "يوم مفتوح في المسجد", note: "💡 الصلوات وقتها مع التلاوة والمراجعة لكل صلاة", type: "work" },
+            { id: 7, start: "19:30", end: "20:00", title: "طريق العودة + المغرب", note: "", type: "worship" },
+            { id: 8, start: "20:00", end: "21:19", title: "راحة وعشاء وشرب ماء", note: "لا يوجد تسميع طالبات اليوم", type: "routine" },
+            { id: 9, start: "21:19", end: "21:40", title: "صلاة العشاء + حصة القرآن والنوم", note: "", type: "routine" }
+        ]
+    };
+
+    let schedules = JSON.parse(localStorage.getItem('mySchedules2')) || defaultData;
+    let currentDay = "الأحد";
+    const days = ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت (استثناء غداً)"];
+
+    function initDays() {
+        const nav = document.getElementById('daysNav');
+        nav.innerHTML = '';
+        days.forEach(day => {
+            const btn = document.createElement('button');
+            btn.className = `day-btn ${day === currentDay ? 'active' : ''}`;
+            btn.innerText = day;
+            btn.onclick = () => {
+                currentDay = day;
+                initDays();
+                renderTimeline();
+            };
+            nav.appendChild(btn);
+        });
+    }
+
+    function renderTimeline() {
+        const timeline = document.getElementById('timeline');
+        timeline.innerHTML = '';
+        schedules[currentDay].sort((a, b) => a.start.localeCompare(b.start));
+
+        schedules[currentDay].forEach((task, index) => {
+            let notesHtml = task.note.split('<br>').map(note => {
+                return note.includes('💡') ? `<div class="smart-note">${note}</div>` : (note ? `<p>${note}</p>` : '');
+            }).join('');
+
+            timeline.innerHTML += `
+                <div class="task-card" data-type="${task.type}">
+                    <div class="actions">
+                        <button class="btn-icon" onclick="editTask(${index})" title="تعديل">✏️</button>
+                        <button class="btn-icon" onclick="deleteTask(${index})" title="حذف">🗑️</button>
+                    </div>
+                    <div class="time-col">
+                        <span>${task.start}</span>
+                        <span style="font-size:10px; opacity:0.6; text-align:center;">إلى</span>
+                        <span>${task.end}</span>
+                    </div>
+                    <div class="info-col">
+                        <h3>${task.title}</h3>
+                        ${notesHtml}
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    function openModal(index = -1) {
+        document.getElementById('taskModal').style.display = 'flex';
+        if(index > -1) {
+            const task = schedules[currentDay][index];
+            document.getElementById('modalTitle').innerText = "تعديل المهمة";
+            document.getElementById('taskId').value = index;
+            document.getElementById('taskStart').value = task.start;
+            document.getElementById('taskEnd').value = task.end;
+            document.getElementById('taskTitle').value = task.title;
+            document.getElementById('taskNote').value = task.note.replace(/<br>/g, ' | ');
+            document.getElementById('taskType').value = task.type;
+        } else {
+            document.getElementById('modalTitle').innerText = "إضافة مهمة جديدة";
+            document.getElementById('taskId').value = "";
+            document.getElementById('taskStart').value = "";
+            document.getElementById('taskEnd').value = "";
+            document.getElementById('taskTitle').value = "";
+            document.getElementById('taskNote').value = "";
+            document.getElementById('taskType').value = "routine";
+        }
+    }
+
+    function closeModal() { document.getElementById('taskModal').style.display = 'none'; }
+
+    function saveTask() {
+        const index = document.getElementById('taskId').value;
+        const task = {
+            id: Date.now(),
+            start: document.getElementById('taskStart').value || "00:00",
+            end: document.getElementById('taskEnd').value || "00:00",
+            title: document.getElementById('taskTitle').value || "مهمة بدون اسم",
+            note: document.getElementById('taskNote').value.replace(/ \| /g, '<br>'),
+            type: document.getElementById('taskType').value
+        };
+
+        if(index !== "") schedules[currentDay][index] = task; 
+        else schedules[currentDay].push(task);
+
+        saveData();
+        closeModal();
+        renderTimeline();
+    }
+
+    function deleteTask(index) {
+        if(confirm('هل أنت متأكد من حذف هذه المهمة؟')) {
+            schedules[currentDay].splice(index, 1);
+            saveData();
+            renderTimeline();
+        }
+    }
+
+    function saveData() { localStorage.setItem('mySchedules2', JSON.stringify(schedules)); }
+
+    initDays();
+    renderTimeline();
+</script>
+
+</body>
+</html>
